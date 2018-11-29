@@ -1,0 +1,149 @@
+---
+title: "toyota8"
+author: "t"
+date: "23 11 2018"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Tarea:
+Importar desde CV el dataset ToyotaCorolla.csv.  
+Analizar graficamente.  
+Encontrar modelos de regresión lineal, polinómicos y ajustes entre varias variables (múltiple).  
+Evaluar los modelos gráficamente y con los estimadores estadísticos vistos en clase.   
+Subir los resultados por el CV.  
+
+## Importar desde CV el dataset ToyotaCorolla.csv.
+```{r}
+ setwd("~/Master-Studium/R")
+ library(readr)
+library(dplyr)
+ ToyotaCorolla <- read.csv("ToyotaCorolla.csv")
+ View(ToyotaCorolla)
+ attach(ToyotaCorolla)
+```
+## Analizar graficamente.
+```{r} 
+ pairs(ToyotaCorolla)
+ pairs(ToyotaCorolla[c(1,2,3)])
+ # Analizando los "plots" se ve una dependencia entre precio a KM y edad
+```
+## Encontrar modelos de regresión lineal, polinómicos y ajustes entre varias variables (múltiple).
+
+### Primero: Price(km), comparando, dependencia linear, polinomia, logarimica
+He encontrado que una regreccion de poli4 queda la mejor entre ellas:
+```{r} 
+ M1_Pri_Km_lin <- lm(Price ~ KM)   # modelo linear basico, price depende de KM
+ summary(M1_Pri_Km_lin)
+ 
+ M2_Pri_Km_Sq <- lm(Price ~ KM + I(KM^2))    # adding cubig dependency to the model M2_Pri_Km_Sq
+ summary(M2_Pri_Km_Sq)
+ 
+ M3_Pri_km_log <- lm (Price ~ log(KM)) # logaritmo natural
+ summary(M3_Pri_km_log)
+ 
+ M4_Pri_km_cub <- lm(Price ~ KM + I(KM^2)+I(KM^3)) 
+ summary(M4_Pri_km_cub)
+ 
+  M5_Pri_km_1overX <- lm(Price ~ KM + I(1/KM)) # no tan bueno como pensado
+ summary(M5_Pri_km_1overX )
+ 
+ M6_Pri_km_qua <- lm(Price ~ KM + I(KM^2)+I(KM^3)+I(KM^4)) 
+ summary(M6_Pri_km_qua)
+ 
+ anova(M1_Pri_Km_lin,M2_Pri_Km_Sq) # demustra que M2 es mejor
+ anova(M2_Pri_Km_Sq,M4_Pri_km_cub) # demustra que M4 es todavia mejor
+anova(M4_Pri_km_cub,M6_Pri_km_qua) # demustra que M4 es todavia mejor
+ 
+ 
+ plot(KM, Price)        # plots grafic
+ abline(M1_Pri_Km_lin)             # to plot linear line in actual plot
+ 
+ par(new=TRUE)          # combine plots
+ # plot(KM, predict(M2_Pri_Km_Sq,data.frame(x=KM)),col="red",  xaxt="n", yaxt="n", ylab="")
+  # xaxt="n", yaxt="n", - no scales on axes
+  # xlab="", ylab="", type="l")   -  no lables on axis
+  # type= "l" - line
+  # axis(side=4)   - adds a seccond y axis
+ # or 
+ x1=0:250000
+  #plot(x1, predict(M2_Pri_Km_Sq,data.frame(KM=x1)), col="red")
+ plot(x1, predict(M6_Pri_km_qua,data.frame(KM=x1)), col="red", xaxt="n", yaxt="n", ylab="")
+ plot(M6_Pri_km_qua) # para ver el Modelo en graficos
+ 
+ 
+```                      
+### Price(age)
+He encontrado que una regricion de poli2 queda la mejor entre ellas:
+```{r}
+ M1_Pri_Age_lin <- lm(Price ~ Age)   
+ summary(M1_Pri_Age_lin)
+ 
+ M2_Pri_Age_Sq <- lm(Price ~ Age + I(Age^2))   
+ summary(M2_Pri_Age_Sq)
+ 
+ M3_Pri_Age_log <- lm (Price ~ log(Age)) # logaritmo natural
+ summary(M3_Pri_Age_log)
+ 
+ M4_Pri_Age_cub <- lm(Price ~ Age + I(Age^2)+I(Age^3)) #R^2 menor q el de M2 -> demasiodos variables
+ summary(M4_Pri_Age_cub)
+
+ anova(M2_Pri_Age_Sq,M4_Pri_Age_cub) # Pr(>F) es grande -> M2 es mejor
+
+```
+### Combinacion Price(KM,Age)
+voy a combinarinfluencia de Age es mucho mas grande que la de KM. Pero aun la combinacion de las dos da un resultado todavia mejor.
+```{r}
+ 
+M1_Pri_KmAge_cub <- lm(Price ~ KM +I(KM^2)+I(KM^3) +Age + I(Age^2))
+summary(M1_Pri_KmAge_cub)
+
+```
+### Buscar mas variables interessantes
+Haciendo un modelo linear de todas las filas, se ve (en summary) que HP tambien tiene una influencia al Price de un caracter linear.
+
+```{r}
+ M_All <- lm(Price ~ . , data = ToyotaCorolla) # todas las filas
+ summary(M_All) # demuestra dependencia linear de HP
+ plot(Price,HP)
+ 
+ M1_Pri_HP_lin <- lm(Price ~ HP)
+ summary(M1_Pri_HP_lin) 
+ 
+ M2_Pri_HP_sq <- lm(Price ~ HP +I(HP^2))
+ summary(M2_Pri_HP_sq) 
+ 
+ anova(M1_Pri_HP_lin,M2_Pri_HP_sq) # comparar dos modelos ->M2 mejor
+ 
+ #m5 <- lm(Price ~ . , data = ToyotaCorolla) # todas las filas
+ #summary(m5)
+  
+```
+### Add all 3 elements to the model
+```{r}
+
+M2_Pri_KmAgeHp <- lm(Price ~ KM +I(KM^2)+I(KM^3) +Age + I(Age^2)+HP +I(HP^2))
+summary(M2_Pri_KmAgeHp) # R^2 of 0.86
+
+anova(M1_Pri_KmAge_cub,M2_Pri_KmAgeHp) # M2 is better
+coef(M2_Pri_KmAgeHp)                  # demuestra los coefficientes de la regression
+
+```
+### Analizar modelo graficamente
+### Residual vs fitted:   
+vemos que los residuals son equalmente (simetrical) distribuido por los fitted (esta bien)   
+### Normal Q-Q
+en la parte baja y alta hay una pequenia deviacion de la distribucion normal (a lo mejor podria ser mejorado)    
+### Scale location
+demuestra si los "residual" estan repatido equalmente por los "predictors" (una lina horizontal seria mejor, se podria mejorar)   
+### Residual vs Leverage
+no aparecen "outliers" con mucha influencia
+```{r}
+plot(M2_Pri_KmAgeHp)
+```
+
